@@ -27,6 +27,10 @@ func NewMetrics(ctx context.Context, meter metric.Meter, c *cli.Context) (*Metri
 		events := m.GetHealthEvents()
 		for _, e := range events {
 			for _, res := range e.AffectedResources {
+				endTime := ""
+				if e.Event.EndTime != nil {
+					endTime = e.Event.EndTime.String()
+				}
 				attributes := metric.WithAttributes(
 					attribute.Key("region").String(aws.ToString(e.Event.Region)),
 					attribute.Key("service").String(aws.ToString(e.Event.Service)),
@@ -35,7 +39,7 @@ func NewMetrics(ctx context.Context, meter metric.Meter, c *cli.Context) (*Metri
 					attribute.Key("code").String(aws.ToString(e.Event.EventTypeCode)),
 					attribute.Key("resources").String(aws.ToString(res.EntityValue)),
 					attribute.Key("start_time").String((e.Event.StartTime.String())),
-					attribute.Key("end_time").String(e.Event.EndTime.String()),
+					attribute.Key("end_time").String(endTime),
 				)
 
 				status := int64(1) // open
