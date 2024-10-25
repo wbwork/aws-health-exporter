@@ -19,39 +19,39 @@ const (
 	HealthEndpoint string = "global.health.amazonaws.com"
 )
 
-type Pricing struct {
-	Product     Product
-	ServiceCode string
-	Terms       Terms
-}
-
-type Terms struct {
-	OnDemand map[string]SKU
-	Reserved map[string]SKU
-}
-type Product struct {
-	ProductFamily string
-	Attributes    map[string]string
-	Sku           string
-}
-
-type SKU struct {
-	PriceDimensions map[string]Details
-	Sku             string
-	EffectiveDate   string
-	OfferTermCode   string
-	TermAttributes  string
-}
-
-type Details struct {
-	Unit         string
-	EndRange     string
-	Description  string
-	AppliesTo    []string
-	RateCode     string
-	BeginRange   string
-	PricePerUnit map[string]string
-}
+//type Pricing struct {
+//	Product     Product
+//	ServiceCode string
+//	Terms       Terms
+//}
+//
+//type Terms struct {
+//	OnDemand map[string]SKU
+//	Reserved map[string]SKU
+//}
+//type Product struct {
+//	ProductFamily string
+//	Attributes    map[string]string
+//	Sku           string
+//}
+//
+//type SKU struct {
+//	PriceDimensions map[string]Details
+//	Sku             string
+//	EffectiveDate   string
+//	OfferTermCode   string
+//	TermAttributes  string
+//}
+//
+//type Details struct {
+//	Unit         string
+//	EndRange     string
+//	Description  string
+//	AppliesTo    []string
+//	RateCode     string
+//	BeginRange   string
+//	PricePerUnit map[string]string
+//}
 
 func (m *Metrics) NewHealthClient(ctx context.Context) {
 	// AWS Health is a global service with two regions:
@@ -70,7 +70,7 @@ func (m *Metrics) NewHealthClient(ctx context.Context) {
 	cfg := m.awsconfig
 	cfg.Region = region
 
-	m.health = health.NewFromConfig(cfg, health.WithEndpointResolver(health.EndpointResolverFromURL(fmt.Sprintf("https://%s", cname))))
+	m.health = health.NewFromConfig(cfg)
 }
 
 func newAWSConfig(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {

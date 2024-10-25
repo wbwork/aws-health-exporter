@@ -10,18 +10,21 @@ import (
 
 func (m *Metrics) GetAccountEvents() []HealthEvent {
 	ctx := context.TODO()
+	weekAgo := time.Now().Add(time.Hour * -24 * 7)
+	weeksAhead2 := time.Now().Add(time.Hour * 24 * 7 * 2)
 	now := time.Now()
 	pag := health.NewDescribeEventsPaginator(
 		m.health,
 		&health.DescribeEventsInput{
 			Filter: &healthTypes.EventFilter{
-				LastUpdatedTimes: []healthTypes.DateTimeRange{
+				StartTimes: []healthTypes.DateTimeRange{
 					{
-						From: &m.lastScrape,
-						To:   &now,
+						From: &weekAgo,
+						To:   &weeksAhead2,
 					},
 				},
-				Regions: m.regions,
+				Regions:             m.regions,
+				EventTypeCategories: []healthTypes.EventTypeCategory{healthTypes.EventTypeCategoryIssue, healthTypes.EventTypeCategoryScheduledChange, healthTypes.EventTypeCategoryIssue},
 			},
 		})
 

@@ -26,25 +26,33 @@ func NewMetrics(ctx context.Context, meter metric.Meter, c *cli.Context) (*Metri
 	meter.RegisterCallback(func(ctx context.Context, o metric.Observer) error {
 		events := m.GetHealthEvents()
 		for _, e := range events {
-			attributes := metric.WithAttributes(
-				attribute.Key("region").String(aws.ToString(e.Event.Region)),
-				attribute.Key("service").String(aws.ToString(e.Event.Service)),
-				attribute.Key("scope").String(string(e.Event.EventScopeCode)),
-				attribute.Key("category").String(string(e.Event.EventTypeCategory)),
-				attribute.Key("code").String(aws.ToString(e.Event.EventTypeCode)),
-			)
+			for _, res := range e.AffectedResources {
+				attributes := metric.WithAttributes(
+					attribute.Key("region").String(aws.ToString(e.Event.Region)),
+					attribute.Key("service").String(aws.ToString(e.Event.Service)),
+					attribute.Key("scope").String(string(e.Event.EventScopeCode)),
+					attribute.Key("category").String(string(e.Event.EventTypeCategory)),
+					attribute.Key("code").String(aws.ToString(e.Event.EventTypeCode)),
+					attribute.Key("resources").String(aws.ToString(res.EntityValue)),
+					attribute.Key("start_time").String((e.Event.StartTime.String())),
+					attribute.Key("end_time").String(e.Event.EndTime.String()),
+				)
 
-			status := int64(1) // open
-			if e.Event.StatusCode != "open" {
-				status = int64(0) // closed
-			}
-
-			if len(e.AffectedAccounts) > 0 {
-				for _, account := range e.AffectedAccounts {
-					o.ObserveInt64(g, status, attributes, metric.WithAttributes(attribute.Key("account").String(account)))
+				status := int64(1) // open
+				if e.Event.StatusCode == "closed" {
+					status = int64(0) // closed
 				}
-			} else {
-				o.ObserveInt64(g, status, attributes)
+				if e.Event.StatusCode == "upcoming" {
+					status = int64(2)
+				}
+
+				if len(e.AffectedAccounts) > 0 {
+					for _, account := range e.AffectedAccounts {
+						o.ObserveInt64(g, status, attributes, metric.WithAttributes(attribute.Key("account").String(account)))
+					}
+				} else {
+					o.ObserveInt64(g, status, attributes)
+				}
 			}
 		}
 
@@ -71,7 +79,7 @@ func (m *Metrics) init(ctx context.Context, c *cli.Context) {
 
 	m.NewHealthClient(ctx)
 
-	m.lastScrape = time.Now().Add(c.Duration("time-shift"))
+	m.lastScrape = time.Now().Add(time.Hour * -24 * 30).Add(c.Duration("time-shift"))
 
 	if len(c.String("slack-token")) > 0 && len(c.String("slack-channel")) > 0 {
 		m.slackToken = c.String("slack-token")

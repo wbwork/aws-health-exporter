@@ -28,7 +28,9 @@ func (m *Metrics) GetHealthEvents() []HealthEvent {
 	if m.organizationEnabled {
 		tmp = m.GetOrgEvents()
 	} else {
+		log.Debug("retrieving account events")
 		tmp = m.GetAccountEvents()
+		log.Debug(fmt.Sprintf("retrieved account events, %d events.", len(tmp)))
 	}
 
 	for _, e := range tmp {
