@@ -29,7 +29,8 @@ func (m *Metrics) GetHealthEvents() []HealthEvent {
 		tmp = m.GetOrgEvents()
 	} else {
 		log.Debug("retrieving account events")
-		tmp = m.GetAccountEvents()
+		tmp = m.GetAccountEvents("scheduled")
+		tmp = append(tmp, m.GetAccountEvents("issue")...)
 		log.Debug(fmt.Sprintf("retrieved account events, %d events.", len(tmp)))
 	}
 

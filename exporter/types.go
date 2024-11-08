@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/directconnect"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/health"
 	healthTypes "github.com/aws/aws-sdk-go-v2/service/health/types"
 	"github.com/slack-go/slack"
@@ -11,6 +13,8 @@ import (
 
 type Metrics struct {
 	health *health.Client
+	ec2    map[string]ec2.Client
+	dx     map[string]directconnect.Client
 
 	slackApi     *slack.Client
 	slackToken   string
@@ -39,4 +43,5 @@ type HealthEvent struct {
 	Event             *healthTypes.Event
 	EventDescription  *healthTypes.EventDescription
 	AffectedResources []healthTypes.AffectedEntity
+	Tags              map[string]string
 }

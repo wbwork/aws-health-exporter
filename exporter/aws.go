@@ -10,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/directconnect"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/health"
 )
 
@@ -37,6 +39,34 @@ func (m *Metrics) NewHealthClient(ctx context.Context) {
 	cfg.Region = region
 
 	m.health = health.NewFromConfig(cfg)
+}
+
+func (m *Metrics) NewEC2Client(ctx context.Context, region string) {
+	cname, err := net.LookupCNAME(HealthEndpoint)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	cname = strings.TrimSuffix(cname, ".")
+
+	cfg := m.awsconfig
+	cfg.Region = region
+
+	m.ec2[region] = *ec2.NewFromConfig(cfg)
+}
+
+func (m *Metrics) NewDirectConnectClient(ctx context.Context, region string) {
+	cname, err := net.LookupCNAME(HealthEndpoint)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	cname = strings.TrimSuffix(cname, ".")
+
+	cfg := m.awsconfig
+	cfg.Region = region
+
+	m.dx[region] = *directconnect.NewFromConfig(cfg)
 }
 
 func newAWSConfig(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
