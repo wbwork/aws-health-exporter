@@ -3,6 +3,7 @@ package exporter
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -16,6 +17,7 @@ import (
 )
 
 func (m *Metrics) GetAccountEvents(healthType string) []HealthEvent {
+	log.Info("Received request for scraping")
 	ctx := context.TODO()
 	weekAgo := time.Now().Add(time.Hour * -24 * 7)
 	weeksAhead2 := time.Now().Add(time.Hour * 24 * 7 * 2)
@@ -137,7 +139,7 @@ func (m Metrics) getTags(ctx context.Context, event healthTypes.Event, enrichedE
 
 			resources := []string{}
 			for _, v := range enrichedEvent.AffectedResources {
-				resources = append(resources, *v.EntityArn)
+				resources = append(resources, fmt.Sprintf("arn:aws:directconnect:%s:%s:%s/%s", *enrichedEvent.Event.Region, strings.Split(*v.EntityArn, ":")[4], strings.Split(*v.EntityValue, "-")[0], *v.EntityValue))
 			}
 			log.Info(fmt.Sprintf("resources to find tags for: %v", resources))
 			output, err := dxcli.DescribeTags(ctx, &directconnect.DescribeTagsInput{
@@ -150,12 +152,12 @@ func (m Metrics) getTags(ctx context.Context, event healthTypes.Event, enrichedE
 			enrichedEvent.Tags = map[string]string{}
 			for _, rt := range output.ResourceTags {
 				for _, t := range rt.Tags {
-					log.Info(fmt.Sprintf("key=%s value=%s", *t.Key, *t.Value))
+					//					log.Info(fmt.Sprintf("key=%s value=%s", *t.Key, *t.Value))
 					enrichedEvent.Tags[*t.Key] = *t.Value
 				}
 			}
 
-			log.Info(fmt.Sprintf("tags %v", enrichedEvent.Tags))
+			//log.Info(fmt.Sprintf("tags %v", enrichedEvent.Tags))
 		}
 	}
 }
