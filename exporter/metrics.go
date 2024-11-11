@@ -10,6 +10,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/directconnect"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/slack-go/slack"
 	"github.com/urfave/cli/v2"
@@ -26,25 +28,39 @@ func NewMetrics(ctx context.Context, meter metric.Meter, c *cli.Context) (*Metri
 	meter.RegisterCallback(func(ctx context.Context, o metric.Observer) error {
 		events := m.GetHealthEvents()
 		for _, e := range events {
-			attributes := metric.WithAttributes(
-				attribute.Key("region").String(aws.ToString(e.Event.Region)),
-				attribute.Key("service").String(aws.ToString(e.Event.Service)),
-				attribute.Key("scope").String(string(e.Event.EventScopeCode)),
-				attribute.Key("category").String(string(e.Event.EventTypeCategory)),
-				attribute.Key("code").String(aws.ToString(e.Event.EventTypeCode)),
-			)
-
-			status := int64(1) // open
-			if e.Event.StatusCode != "open" {
-				status = int64(0) // closed
-			}
-
-			if len(e.AffectedAccounts) > 0 {
-				for _, account := range e.AffectedAccounts {
-					o.ObserveInt64(g, status, attributes, metric.WithAttributes(attribute.Key("account").String(account)))
+			for _, res := range e.AffectedResources {
+				endTime := ""
+				if e.Event.EndTime != nil {
+					endTime = e.Event.EndTime.String()
 				}
-			} else {
-				o.ObserveInt64(g, status, attributes)
+				attributes := metric.WithAttributes(
+					attribute.Key("region").String(aws.ToString(e.Event.Region)),
+					attribute.Key("service").String(aws.ToString(e.Event.Service)),
+					attribute.Key("scope").String(string(e.Event.EventScopeCode)),
+					attribute.Key("category").String(string(e.Event.EventTypeCategory)),
+					attribute.Key("code").String(aws.ToString(e.Event.EventTypeCode)),
+					attribute.Key("resources").String(aws.ToString(res.EntityValue)),
+					attribute.Key("squad").String(e.Tags["Squad"]),
+					attribute.Key("name").String(e.Tags["Name"]),
+					attribute.Key("start_time").String((e.Event.StartTime.String())),
+					attribute.Key("end_time").String(endTime),
+				)
+
+				status := int64(1) // open
+				if e.Event.StatusCode == "closed" {
+					status = int64(0) // closed
+				}
+				if e.Event.StatusCode == "upcoming" {
+					status = int64(2)
+				}
+
+				if len(e.AffectedAccounts) > 0 {
+					for _, account := range e.AffectedAccounts {
+						o.ObserveInt64(g, status, attributes, metric.WithAttributes(attribute.Key("account").String(account)))
+					}
+				} else {
+					o.ObserveInt64(g, status, attributes)
+				}
 			}
 		}
 
@@ -70,8 +86,15 @@ func (m *Metrics) init(ctx context.Context, c *cli.Context) {
 	}
 
 	m.NewHealthClient(ctx)
+	regions := []string{"eu-west-1", "eu-central-1", "eu-central-2", "us-east-1", "us-west-1", "ca-central-1", "sa-east-1", "ap-southeast-1", "ap-southeast-2"}
+	m.ec2 = map[string]ec2.Client{}
+	m.dx = map[string]directconnect.Client{}
+	for _, region := range regions {
+		m.NewEC2Client(ctx, region)
+		m.NewDirectConnectClient(ctx, region)
+	}
 
-	m.lastScrape = time.Now().Add(c.Duration("time-shift"))
+	m.lastScrape = time.Now().Add(time.Hour * -24 * 30).Add(c.Duration("time-shift"))
 
 	if len(c.String("slack-token")) > 0 && len(c.String("slack-channel")) > 0 {
 		m.slackToken = c.String("slack-token")
